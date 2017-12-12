@@ -32,7 +32,7 @@ FusionEKF::FusionEKF() {
         0, 0, 0.09;
 
   // Laser measurement function.
-  H_laser << 1, 0, 0, 0,
+  H_laser_ << 1, 0, 0, 0,
 	     0, 1, 0, 0;
 
 
@@ -77,9 +77,9 @@ void FusionEKF::ProcessMeasurement(const MeasurementPackage &measurement_pack) {
       /**
       Converting radar data from polar to cartesian coordinates and initializing state.
       */
-      float rho = meas_package.raw_measurements_[0];
-      float phi = meas_package.raw_measurements_[0];
-      float rho_dot = meas_package.raw_measurements_[0];
+      float rho = measurement_pack.raw_measurements_[0];
+      float phi = measurement_pack.raw_measurements_[0];
+      float rho_dot = measurement_pack.raw_measurements_[0];
 
       float px = rho * cos(phi);
       float py = rho * sin(phi);
@@ -93,13 +93,13 @@ void FusionEKF::ProcessMeasurement(const MeasurementPackage &measurement_pack) {
       Initializing state.
       In case of Laser measurement on the positions px, py are avaialble;
       */
-      ekf_.x_ << meas_package.raw_measurements_[0], meas_package.raw_measurements_[1], 0, 0;
+      ekf_.x_ << measurement_pack.raw_measurements_[0], measurement_pack.raw_measurements_[1], 0, 0;
     }
 
     // done initializing, no need to predict or update
     is_initialized_ = true;
 
-    previous_timestamp_ = meas_package.timestamp_;
+    previous_timestamp_ = measurement_pack.timestamp_;
     return;
   }
 
@@ -115,14 +115,16 @@ void FusionEKF::ProcessMeasurement(const MeasurementPackage &measurement_pack) {
   float dt_2 = dt * dt;
 	float dt_3 = dt_2 * dt;
 	float dt_4 = dt_3 * dt;
+   //process noise
+   float noise_ax = 9;
+   float noise_ay = 9;
+  // Update the state transition matrix F according to the new elapsed time
+  ekf_.F_(0, 2) = dt;
+  ekf_.F_(1, 3) = dt;
 
-	// Update the state transition matrix F according to the new elapsed time
-  kf_.F_(0, 2) = dt;
-  kf_.F_(1, 3) = dt;
-
-	// set the process covariance matrix Q
-  kf_.Q_ = MatrixXd(4, 4);
-  kf_.Q_ <<  dt_4/4*noise_ax, 0, dt_3/2*noise_ax, 0,
+  // set the process covariance matrix Q
+  ekf_.Q_ = MatrixXd(4, 4);
+  ekf_.Q_ <<  dt_4/4*noise_ax, 0, dt_3/2*noise_ax, 0,
              0, dt_4/4*noise_ay, 0, dt_3/2*noise_ay,
              dt_3/2*noise_ax, 0, dt_2*noise_ax, 0,
              0, dt_3/2*noise_ay, 0, dt_2*noise_ay;
